@@ -1,0 +1,11 @@
+streamlit
+certifi
+charset-normalizer
+click
+idna
+openai
+pandas
+python-dotenv
+requests
+spotipy
+urllib3
