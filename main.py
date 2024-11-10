@@ -155,14 +155,12 @@ def parse_model_response(response):
         st.write("Raw GPT-4o Mini response:", response)
         return []
 
-def get_track_info_concurrent(track_ids, exclude_artists):
+def get_track_info_concurrent(track_ids):
     """
     Retrieves track information (name, artists) for a list of track IDs using threading for concurrency.
-    Excludes tracks by artists specified in exclude_artists.
     """
     track_info_list = []
     lock = threading.Lock()
-    exclude_artists_lower = [artist.lower() for artist in exclude_artists]
     
     def fetch_batch(start):
         batch = track_ids[start:start+50]
@@ -172,9 +170,6 @@ def get_track_info_concurrent(track_ids, exclude_artists):
                 for track in tracks:
                     if track and track['id']:
                         track_artists = [artist['name'] for artist in track['artists']]
-                        # Exclude tracks by excluded artists
-                        if any(artist.lower() in exclude_artists_lower for artist in track_artists):
-                            continue  # Skip this track
                         track_info = {
                             'id': track['id'],
                             'name': track['name'],
@@ -263,10 +258,9 @@ def filter_songs_with_model(df, diagnostic, feature_definitions):
     
     return filtered_ids
 
-def determine_search_parameters(genre, mood, energy_level, additional_info, exclude_genres, exclude_artists):
+def determine_search_parameters(genre, mood, energy_level, additional_info):
     """
     Uses GPT-4o Mini to determine which genres and artists to search for based on user inputs.
-    Accounts for genres and artists to exclude.
     """
     prompt = f"""
 Based on the following user preferences:
@@ -274,10 +268,8 @@ Based on the following user preferences:
 - Mood: {mood}
 - Energy Level: {energy_level}
 - Additional Info: {additional_info if additional_info else 'None'}
-- Excluded Genres: {', '.join(exclude_genres) if exclude_genres else 'None'}
-- Excluded Artists: {', '.join(exclude_artists) if exclude_artists else 'None'}
 
-Please provide a list of genres and artists that match these preferences, excluding any genres or artists specified.
+Please provide a list of genres and artists that match these preferences.
 
 **Respond ONLY with valid JSON in the following format, without any code fences or additional text:**
 
@@ -301,9 +293,6 @@ Please provide a list of genres and artists that match these preferences, exclud
             search_params = json.loads(response)
             genres = search_params.get('genres', [])
             artists = search_params.get('artists', [])
-            # Remove excluded genres and artists (case-insensitive)
-            genres = [g for g in genres if g.lower() not in [eg.lower() for eg in exclude_genres]]
-            artists = [a for a in artists if a.lower() not in [ea.lower() for ea in exclude_artists]]
             return genres, artists
         except (json.JSONDecodeError, TypeError) as e:
             st.write(f"Error parsing GPT-4o Mini response for search parameters: {e}")
@@ -364,14 +353,12 @@ Respond ONLY with a JSON array of decisions in the following format, ensuring al
 def search_and_combine_playlists(
     search_genres,
     search_artists,
-    existing_playlist_ids,
     limit=200,
     sample_size_per_playlist=10,
     diagnostic=""
 ):
     """
-    Searches for playlists based on genres and artists, combines them with existing playlists.
-    Ensures that the same playlist is not processed more than once.
+    Searches for playlists based on genres and artists, combines them.
     Returns a list of unique track IDs limited to a specified count.
     """
     track_ids = set()
@@ -381,11 +368,8 @@ def search_and_combine_playlists(
     def process_playlist(playlist_id, playlist_name, playlist_size):
         # Check playlist size against the specified criteria
         if playlist_size < 100 or playlist_size > 1500:
-            # st.write(f"Skipping playlist '{playlist_name}' (has {playlist_size} tracks).")
             return
-        # st.write(f"Fetching tracks from playlist: {playlist_name}")
         fetched_track_ids = fetch_playlist_tracks(playlist_id, sample_size=sample_size_per_playlist)
-        # st.write(f"Fetched {len(fetched_track_ids)} tracks from playlist: {playlist_name}")
         with lock:
             track_ids.update(fetched_track_ids)
     
@@ -398,7 +382,6 @@ def search_and_combine_playlists(
             playlist_id = playlist['id']
             with lock:
                 if playlist_id in processed_playlists:
-                    # st.write(f"Skipping already processed playlist '{playlist['name']}' (ID: {playlist_id}).")
                     continue
                 processed_playlists.add(playlist_id)
             playlist_name = playlist['name']
@@ -409,7 +392,6 @@ def search_and_combine_playlists(
     playlists_info = []
     
     # Search for playlists matching the genres
-    # st.write("Searching for playlists based on genres...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         futures = {executor.submit(search_playlists, f'genre:"{genre}"'): genre for genre in search_genres}
         for future in concurrent.futures.as_completed(futures):
@@ -421,7 +403,6 @@ def search_and_combine_playlists(
                 st.write(f"Error searching playlists for genre '{genre}': {e}")
     
     # Search for playlists matching the artists
-    # st.write("Searching for playlists based on artists...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         futures = {executor.submit(search_playlists, f'artist:"{artist}"'): artist for artist in search_artists}
         for future in concurrent.futures.as_completed(futures):
@@ -432,34 +413,14 @@ def search_and_combine_playlists(
             except Exception as e:
                 st.write(f"Error searching playlists for artist '{artist}': {e}")
     
-    # Include existing playlists
-    if existing_playlist_ids:
-        # st.write("Including tracks from existing playlists...")
-        for playlist_id in existing_playlist_ids:
-            with lock:
-                if playlist_id in processed_playlists:
-                    # st.write(f"Skipping already processed existing playlist (ID: {playlist_id}).")
-                    continue
-                processed_playlists.add(playlist_id)
-            # Get playlist size and name
-            try:
-                playlist = sp.playlist(playlist_id, fields='tracks.total,name')
-                playlist_size = playlist['tracks']['total']
-                playlist_name = playlist['name']
-                playlists_info.append((playlist_id, playlist_name, playlist_size))
-            except Exception as e:
-                st.write(f"Error fetching playlist {playlist_id}: {e}")
-
     # **Filter playlists using GPT-4o Mini**
-    # st.write("\nFiltering playlists based on their names using GPT-4o Mini...")
     playlists_info = filter_playlists_with_model(playlists_info, diagnostic)
-    # st.write(f"Playlists after filtering: {len(playlists_info)}")
-
+    
     # Now process playlists concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(process_playlist, pid, pname, psize) for pid, pname, psize in playlists_info]
         concurrent.futures.wait(futures)
-
+    
     # Return only up to the specified limit
     track_ids = list(track_ids)
     if len(track_ids) > limit:
@@ -474,7 +435,6 @@ def fetch_playlist_tracks(playlist_id, sample_size=10):
     try:
         # Get the total number of tracks in the playlist
         total_tracks = sp.playlist_items(playlist_id, fields='total')['total']
-        # st.write(f"Total tracks in playlist: {total_tracks}")
 
         # Fetch all track IDs using pagination
         batch_size = 100  # Maximum allowed by Spotify
@@ -511,8 +471,7 @@ def fetch_playlist_tracks(playlist_id, sample_size=10):
         if len(track_ids) >= sample_size:
             track_ids = random.sample(track_ids, sample_size)
         else:
-            # st.write(f"Playlist {playlist_id} has fewer tracks than the sample size. Using all available tracks.")
-            pass
+            pass  # Use all available tracks if fewer than sample_size
     except spotipy.exceptions.SpotifyException as e:
         st.write(f"Error fetching playlist {playlist_id}: {e}")
     except Exception as e:
@@ -529,20 +488,34 @@ def main():
     mood = st.text_input("Desired Mood (e.g., Calm, Happy, Sad):")
     energy_level = st.selectbox("Energy Level:", ["Low", "Medium", "High"])
     additional_info = st.text_input("Additional Info or Preferences (optional):")
-    exclude_genres_input = st.text_input("Genres to Exclude (separated by commas, optional):")
-    exclude_artists_input = st.text_input("Artists to Exclude (separated by commas, optional):")
-    include_playlists = st.checkbox("Include Existing Playlists for Analysis")
+    
+    # ----------------------- Commented Out Sections ----------------------- #
+    # exclude_genres_input = st.text_input("Genres to Exclude (separated by commas, optional):")
+    # exclude_artists_input = st.text_input("Artists to Exclude (separated by commas, optional):")
+    # include_playlists = st.checkbox("Include Existing Playlists for Analysis")
+    # ----------------------------------------------------------------------- #
 
     if st.button("Submit"):
         if not genre or not mood or not energy_level:
             st.error("Please fill in the required fields: Genre, Mood, and Energy Level.")
             return
 
-        exclude_genres = [g.strip() for g in exclude_genres_input.split(',')] if exclude_genres_input else []
-        exclude_artists = [a.strip() for a in exclude_artists_input.split(',')] if exclude_artists_input else []
+        # ----------------------- Commented Out Sections ----------------------- #
+        # exclude_genres = [g.strip() for g in exclude_genres_input.split(',')] if exclude_genres_input else []
+        # exclude_artists = [a.strip() for a in exclude_artists_input.split(',')] if exclude_artists_input else []
+        # ----------------------------------------------------------------------- #
+
+        # ----------------------- Commented Out Sections ----------------------- #
+        # existing_playlists = []
+        # if include_playlists:
+        #     playlists = sp.current_user_playlists(limit=50)
+        #     playlist_options = {f"{playlist['name']} (ID: {playlist['id']})": playlist['id'] for playlist in playlists['items']}
+        #     selected_playlists = st.multiselect("Select Playlists to Include:", list(playlist_options.keys()))
+        #     existing_playlists = [playlist_options[playlist] for playlist in selected_playlists]
+        # ----------------------------------------------------------------------- #
 
         # Determine search parameters using GPT-4o Mini
-        ai_genres, ai_artists = determine_search_parameters(genre, mood, energy_level, additional_info, exclude_genres, exclude_artists)
+        ai_genres, ai_artists = determine_search_parameters(genre, mood, energy_level, additional_info)
         if not ai_genres and not ai_artists:
             st.error("No genres or artists suggested by GPT-4o Mini for searching.")
             return
@@ -555,18 +528,14 @@ def main():
             st.error("No genres or artists available for searching.")
             return
 
-        # Collect existing playlists if included
-        existing_playlists = []
-        if include_playlists:
-            playlists = sp.current_user_playlists(limit=50)
-            playlist_options = {f"{playlist['name']} (ID: {playlist['id']})": playlist['id'] for playlist in playlists['items']}
-            selected_playlists = st.multiselect("Select Playlists to Include:", list(playlist_options.keys()))
-            existing_playlists = [playlist_options[playlist] for playlist in selected_playlists]
+        # ----------------------- Commented Out Sections ----------------------- #
+        # existing_playlists is not used anymore
+        # ----------------------------------------------------------------------- #
 
         # Start processing
         process_playlist_generation(
             genre, mood, energy_level, additional_info,
-            existing_playlists, exclude_genres, exclude_artists,
+            # existing_playlists, exclude_genres, exclude_artists,
             selected_genres, selected_artists
         )
 
@@ -575,9 +544,9 @@ def process_playlist_generation(
     mood,
     energy_level,
     additional_info,
-    existing_playlists,
-    exclude_genres,
-    exclude_artists,
+    # existing_playlists,
+    # exclude_genres,
+    # exclude_artists,
     selected_genres,
     selected_artists
 ):
@@ -599,16 +568,13 @@ def process_playlist_generation(
 
         # Step 3: Search and Combine Playlists with a limit
         with st.spinner('Searching and combining playlists...'):
-            
             combined_track_ids = search_and_combine_playlists(
                 selected_genres,
                 selected_artists,
-                existing_playlists,
                 limit=200,
                 sample_size_per_playlist=10,
                 diagnostic=diagnostic  # Pass the diagnostic to filter playlists
             )
-        
 
         if not combined_track_ids:
             st.info("No tracks found based on the specified genres and artists.")
@@ -616,26 +582,23 @@ def process_playlist_generation(
 
         # Step 4: Retrieve Audio Features
         with st.spinner('Retrieving audio features for collected tracks...'):
-            
             audio_features = get_audio_features_concurrent(combined_track_ids)
         status_placeholder.text(f"Retrieved audio features for {len(audio_features)} tracks.")
 
         # Step 5: Retrieve Track Info
         with st.spinner('Retrieving track information...'):
-            
-            track_info_list = get_track_info_concurrent(combined_track_ids, exclude_artists)
+            track_info_list = get_track_info_concurrent(combined_track_ids)
         status_placeholder.text(f"Retrieved track information for {len(track_info_list)} tracks.")
 
-        # Update combined_track_ids to only include tracks we have info for (excluding tracks by excluded artists)
+        # Update combined_track_ids to only include tracks we have info for
         combined_track_ids = [track['id'] for track in track_info_list]
 
         if not combined_track_ids:
-            st.info("No tracks available after excluding specified artists.")
+            st.info("No tracks available after processing.")
             return
 
         # Step 6: Merge DataFrames
         with st.spinner('Merging track information and audio features...'):
-            
             df_features = pd.DataFrame(audio_features)
             df_track_info = pd.DataFrame(track_info_list)
             df = pd.merge(df_track_info, df_features, on='id')
@@ -660,7 +623,6 @@ def process_playlist_generation(
 
         # Step 7: Apply Filtering with GPT-4o Mini
         with st.spinner('Applying filtering with GPT-4o Mini...'):
-            
             feature_definitions = get_feature_definitions()
             filtered_ids = filter_songs_with_model(df, diagnostic, feature_definitions)
         status_placeholder.text(f"Tracks after filtering: {len(filtered_ids)}")
@@ -671,7 +633,6 @@ def process_playlist_generation(
 
         # Step 8: Create New Playlist
         with st.spinner('Creating new playlist...'):
-            
             playlist_name = f"{genre} - {mood} - {energy_level} Energy"
             new_playlist_url = create_new_playlist(playlist_name, filtered_ids)
 
@@ -686,6 +647,89 @@ def process_playlist_generation(
         total_time = time.time() - start_time  # Calculate time up to exception
         st.write(f"An error occurred during playlist generation: {e}")
         st.error(f"An error occurred: {e}\nTotal time before error: {total_time:.2f} seconds")
+
+def search_and_combine_playlists(
+    search_genres,
+    search_artists,
+    limit=200,
+    sample_size_per_playlist=10,
+    diagnostic=""
+):
+    """
+    Searches for playlists based on genres and artists, combines them.
+    Returns a list of unique track IDs limited to a specified count.
+    """
+    track_ids = set()
+    processed_playlists = set()  # Set to keep track of processed playlist IDs
+    lock = threading.Lock()
+    
+    def process_playlist(playlist_id, playlist_name, playlist_size):
+        # Check playlist size against the specified criteria
+        if playlist_size < 100 or playlist_size > 1500:
+            return
+        fetched_track_ids = fetch_playlist_tracks(playlist_id, sample_size=sample_size_per_playlist)
+        with lock:
+            track_ids.update(fetched_track_ids)
+    
+    # Function to search playlists and collect playlist info
+    def search_playlists(query):
+        playlists_info = []
+        search_results = sp.search(q=query, type='playlist', limit=10)
+        playlist_items = search_results['playlists']['items']
+        for playlist in playlist_items:
+            playlist_id = playlist['id']
+            with lock:
+                if playlist_id in processed_playlists:
+                    continue
+                processed_playlists.add(playlist_id)
+            playlist_name = playlist['name']
+            playlist_size = playlist['tracks']['total']
+            playlists_info.append((playlist_id, playlist_name, playlist_size))
+        return playlists_info
+    
+    playlists_info = []
+    
+    # Search for playlists matching the genres
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(search_playlists, f'genre:"{genre}"'): genre for genre in search_genres}
+        for future in concurrent.futures.as_completed(futures):
+            genre = futures[future]
+            try:
+                result = future.result()
+                playlists_info.extend(result)
+            except Exception as e:
+                st.write(f"Error searching playlists for genre '{genre}': {e}")
+    
+    # Search for playlists matching the artists
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(search_playlists, f'artist:"{artist}"'): artist for artist in search_artists}
+        for future in concurrent.futures.as_completed(futures):
+            artist = futures[future]
+            try:
+                result = future.result()
+                playlists_info.extend(result)
+            except Exception as e:
+                st.write(f"Error searching playlists for artist '{artist}': {e}")
+    
+    # **Filter playlists using GPT-4o Mini**
+    playlists_info = filter_playlists_with_model(playlists_info, diagnostic)
+    
+    # Now process playlists concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(process_playlist, pid, pname, psize) for pid, pname, psize in playlists_info]
+        concurrent.futures.wait(futures)
+    
+    # Return only up to the specified limit
+    track_ids = list(track_ids)
+    if len(track_ids) > limit:
+        track_ids = random.sample(track_ids, limit)
+    return track_ids
+
+# --------------------------- Other Helper Functions --------------------------- #
+
+# The rest of your helper functions remain unchanged as they don't relate to the excluded features.
+
+# --------------------------- End of Helper Functions --------------------------- #
 
 if __name__ == "__main__":
     main()
