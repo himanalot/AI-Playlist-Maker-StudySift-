@@ -47,7 +47,6 @@ class StreamlitSessionCacheHandler(CacheHandler):
 
 def authenticate_spotify():
     token_info_key = 'token_info'
-    # Use the client_id and client_secret variables
     global client_id, client_secret
 
     # Initialize session state for 'token_info' if not already set
@@ -56,13 +55,13 @@ def authenticate_spotify():
 
     # Create SpotifyOAuth object with correct client_id and client_secret
     sp_oauth = SpotifyOAuth(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri=SPOTIPY_REDIRECT_URI,
-    scope='playlist-modify-public playlist-modify-private',
-    cache_handler=StreamlitSessionCacheHandler(token_info_key),
-    show_dialog=True
-)
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=SPOTIPY_REDIRECT_URI,
+        scope='playlist-modify-public playlist-modify-private',
+        cache_handler=StreamlitSessionCacheHandler(token_info_key),
+        show_dialog=True
+    )
 
     # Step 1: Check if token_info is already available in session_state
     if st.session_state[token_info_key] is None:
@@ -70,16 +69,14 @@ def authenticate_spotify():
         st.write(f'Please [authorize]({auth_url}) to access your Spotify account.')
 
         # Step 2: Retrieve the authorization code from query parameters
-        auth_code = st.query_params.get('code')
+        auth_code = st.experimental_get_query_params().get('code')
         if auth_code:
             code = auth_code[0] if isinstance(auth_code, list) else auth_code
             token_info = sp_oauth.get_access_token(code)
             st.session_state[token_info_key] = token_info
-            st.experimental_rerun()
-
-        else:
+            st.session_state['rerun'] = True  # Trigger rerun
             st.stop()
-    
+
     # Step 3: Refresh token if it's expired
     token_info = st.session_state[token_info_key]
     if token_info['expires_at'] - int(time.time()) < 60:
