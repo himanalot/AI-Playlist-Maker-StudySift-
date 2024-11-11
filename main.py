@@ -10,6 +10,7 @@ import time
 import streamlit as st
 import threading
 import os
+from dotenv import load_dotenv
 
 
 # --------------------------- Configuration --------------------------- #
@@ -17,10 +18,10 @@ import os
 SPOTIPY_REDIRECT_URI = 'http://localhost:8502'  # Or your deployed app URL
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-GPT4_MINI_API_KEY = os.getenv('GPT4_MINI_API_KEY')
-
-clientt_id = os.getenv('SPOTIPY_CLIENT_ID')
-clientt_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+# Now you can access your variables
+client_id = os.getenv('SPOTIPY_CLIENT_ID')
+client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+api_key = os.getenv('GPT4_MINI_API_KEY')
 
 # --------------------------- Custom Cache Handler --------------------------- #
 
@@ -45,8 +46,8 @@ def authenticate_spotify():
 
     # Create SpotifyOAuth object
     sp_oauth = SpotifyOAuth(
-        client_id=clientt_id,
-        client_secret=clientt_secret,
+        client_id=os.getenv('SPOTIPY_CLIENT_ID'),
+        client_secret=os.getenv('SPOTIPY_CLIENT_SECRET'),
         redirect_uri=SPOTIPY_REDIRECT_URI,
         scope='playlist-modify-public playlist-modify-private',
         cache_handler=StreamlitSessionCacheHandler(token_info_key),
