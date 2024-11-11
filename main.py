@@ -11,34 +11,24 @@ import streamlit as st
 import threading
 import os
 from dotenv import load_dotenv
-import toml
 
 # Debug: List available keys in st.secrets
 st.write("Available secret keys:", st.secrets.keys())
 # --------------------------- Configuration --------------------------- #
 
-SPOTIPY_REDIRECT_URI = 'http://localhost:8502'  # Or your deployed app URL
+SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app/'  # Or your deployed app URL
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-# Load secrets from secrets.toml
-def load_secrets(file_path="secrets.toml"):
-    try:
-        secrets = toml.load(file_path)
-        return secrets
-    except FileNotFoundError:
-        st.error("secrets.toml file not found!")
-        st.stop()
-    except Exception as e:
-        st.error(f"Error reading secrets: {e}")
-        st.stop()
+# Now you can access your variables
+# Access variables from the 'spotify' section
+client_id = st.secrets["spotify"]["SPOTIPY_CLIENT_ID"]
+client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
 
-# Load the secrets
-secrets = load_secrets()
-
-# Access the secrets
-client_id = secrets.get("SPOTIPY_CLIENT_ID")
-client_secret = secrets.get("SPOTIPY_CLIENT_SECRET")
-api_key = secrets.get("GPT4_MINI_API_KEY")
+# Access variables from the 'openai' section
+api_key = st.secrets["openai"]["GPT4_MINI_API_KEY"]
+# Ensure the variables are loaded
+if not all([client_id, client_secret, api_key]):
+    raise ValueError("Missing environment variables. Please set them in Render.")
 
 # --------------------------- Custom Cache Handler --------------------------- #
 
