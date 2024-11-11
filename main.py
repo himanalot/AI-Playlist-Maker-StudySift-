@@ -112,7 +112,7 @@ def authenticate_spotify():
             st.session_state[token_info_key] = None
             st.stop()
     else:
-        st.error("If you have not contacted Ishan Ramrakhiani (ishanramrakhiani@gmail.com) for access, this service will not work.")
+        st.error("Provide the email that you use for your Spotify account to Ishan Ramrakhiani (ishanramrakhiani@gmail.com) for access.")
         st.stop()
 
     # Step 4: Return authenticated Spotify client
