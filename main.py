@@ -64,30 +64,59 @@ def authenticate_spotify():
     )
 
     # Step 1: Check if token_info is already available in session_state
-    if st.session_state[token_info_key] is None:
+    token_info = st.session_state.get(token_info_key)
+
+    if token_info is None:
         auth_url = sp_oauth.get_authorize_url()
         st.write(f'Please [authorize]({auth_url}) to access your Spotify account.')
 
         # Step 2: Retrieve the authorization code from query parameters
         auth_code = st.query_params.get('code')
+
         if auth_code:
-            code = auth_code[0] if isinstance(auth_code, list) else auth_code
+            # Since `st.query_params.get('code')` returns the last value as a string,
+            # we can directly use it without checking for list
+            code = auth_code
             token_info = sp_oauth.get_access_token(code)
-            st.session_state[token_info_key] = token_info
-            st.session_state['rerun'] = True  # Trigger rerun
+
+            if token_info:
+                st.session_state[token_info_key] = token_info
+                st.experimental_rerun()  # Trigger a rerun to use the new token_info
+            else:
+                st.error("Failed to obtain access token. Please try authorizing again.")
+                st.stop()
+
+    # Refresh token if it's expired
+    token_info = st.session_state.get(token_info_key)
+
+    if token_info:
+        expires_at = token_info.get('expires_at')
+        refresh_token = token_info.get('refresh_token')
+
+        if expires_at and refresh_token:
+            current_time = int(time.time())
+            if expires_at - current_time < 60:
+                try:
+                    token_info = sp_oauth.refresh_access_token(refresh_token)
+                    st.session_state[token_info_key] = token_info
+                except Exception as e:
+                    st.error(f"Failed to refresh access token: {e}")
+                    st.session_state[token_info_key] = None
+                    st.stop()
+        else:
+            st.error("Invalid token information. Please re-authenticate.")
+            st.session_state[token_info_key] = None
             st.stop()
-
-    # Step 3: Refresh token if it's expired
-    token_info = st.session_state[token_info_key]
-    if token_info['expires_at'] - int(time.time()) < 60:
-        token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
-        st.session_state[token_info_key] = token_info
-
-    # Step 4: Return authenticated Spotify client
-    if st.session_state[token_info_key]:
-        return spotipy.Spotify(auth=st.session_state[token_info_key]['access_token'])
     else:
-        st.error("Failed to authenticate with Spotify. Please try again.")
+        st.error("No token information found. Please authorize your Spotify account.")
+        st.stop()
+
+    # Return authenticated Spotify client
+    access_token = st.session_state[token_info_key].get('access_token') if st.session_state[token_info_key] else None
+    if access_token:
+        return spotipy.Spotify(auth=access_token)
+    else:
+        st.error("Access token is missing. Please try again.")
         st.stop()
 
 # --------------------------- Helper Functions --------------------------- #
