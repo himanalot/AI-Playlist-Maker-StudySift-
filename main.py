@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 st.write("Available secret keys:", st.secrets.keys())
 # --------------------------- Configuration --------------------------- #
 
-SPOTIPY_REDIRECT_URI = 'http://localhost:8502'  # Or your deployed app URL
+SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app'  # Or your deployed app URL
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
@@ -55,13 +55,13 @@ def authenticate_spotify():
 
     # Create SpotifyOAuth object with correct client_id and client_secret
     sp_oauth = SpotifyOAuth(
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=SPOTIPY_REDIRECT_URI,
-        scope='playlist-modify-public playlist-modify-private',
-        cache_handler=StreamlitSessionCacheHandler(token_info_key),
-        show_dialog=True
-    )
+    client_id=client_id,
+    client_secret=client_secret,
+    redirect_uri=SPOTIPY_REDIRECT_URI,
+    scope='playlist-modify-public playlist-modify-private',
+    cache_handler=StreamlitSessionCacheHandler(token_info_key),
+    show_dialog=True
+)
 
     # Step 1: Check if token_info is already available in session_state
     if st.session_state[token_info_key] is None:
