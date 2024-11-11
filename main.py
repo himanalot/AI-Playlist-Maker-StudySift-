@@ -20,9 +20,12 @@ SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app/'
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
-client_id = st.secrets["SPOTIPY_CLIENT_ID"]
-client_secret = st.secrets["SPOTIPY_CLIENT_SECRET"]
-api_key = st.secrets["GPT4_MINI_API_KEY"]
+# Access variables from the 'spotify' section
+client_id = st.secrets["spotify"]["SPOTIPY_CLIENT_ID"]
+client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
+
+# Access variables from the 'openai' section
+api_key = st.secrets["openai"]["GPT4_MINI_API_KEY"]
 # Ensure the variables are loaded
 if not all([client_id, client_secret, api_key]):
     raise ValueError("Missing environment variables. Please set them in Render.")
@@ -43,15 +46,17 @@ class StreamlitSessionCacheHandler(CacheHandler):
 
 def authenticate_spotify():
     token_info_key = 'token_info'
-    
+    # Use the client_id and client_secret variables
+    global client_id, client_secret
+
     # Initialize session state for 'token_info' if not already set
     if token_info_key not in st.session_state:
         st.session_state[token_info_key] = None
 
-    # Create SpotifyOAuth object
+    # Create SpotifyOAuth object with correct client_id and client_secret
     sp_oauth = SpotifyOAuth(
-        client_id=st.secrets['SPOTIPY_CLIENT_ID'],
-        client_secret=st.secrets['SPOTIPY_CLIENT_SECRET'],
+        client_id=client_id,
+        client_secret=client_secret,
         redirect_uri=SPOTIPY_REDIRECT_URI,
         scope='playlist-modify-public playlist-modify-private',
         cache_handler=StreamlitSessionCacheHandler(token_info_key),
@@ -93,8 +98,9 @@ def call_gpt4_mini(prompt):
     """
     Calls the GPT-4o Mini API with the provided prompt and returns the response.
     """
+    global api_key
     headers = {
-        "Authorization": f"Bearer {GPT4_MINI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
