@@ -21,7 +21,7 @@ SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app' 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
 # Access variables from the 'spotify' section
-client_id = st.secrets["spotify"]["SPOTIPY_CLIENT_ID"]
+client_id = "fe6a043531214ac1abf575878699f986"
 client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
 
 # Access variables from the 'openai' section
