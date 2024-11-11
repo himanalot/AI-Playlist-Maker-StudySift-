@@ -16,10 +16,10 @@ import threading
 SPOTIPY_REDIRECT_URI = 'http://localhost:8502'  # Or your deployed app URL
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
-GPT4_MINI_API_KEY = "hihi"
+# GPT4_MINI_API_KEY = "hihi"
 
-client_id = "hihihi"
-client_secret = "hihihihi"
+# client_id = "hihihi"
+# client_secret = "hihihihi"
 
 # --------------------------- Custom Cache Handler --------------------------- #
 
