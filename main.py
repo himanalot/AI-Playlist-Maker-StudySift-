@@ -548,7 +548,7 @@ def fetch_playlist_tracks(playlist_id, sample_size=10, sp=None):
 # --------------------------- Main Functionality --------------------------- #
 
 def main():
-    st.title("Trackify (AI-Powered Playlists)")
+    st.title("Echo (AI-Powered Playlists)")
 
     # Authenticate the user
     sp = authenticate_spotify()
