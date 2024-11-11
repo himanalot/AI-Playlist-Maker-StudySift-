@@ -112,7 +112,7 @@ def authenticate_spotify():
             st.session_state[token_info_key] = None
             st.stop()
     else:
-        st.error("No token information found. Please authorize your Spotify account.")
+        st.error("Please authorize your Spotify account by clicking on the link above.")
         st.stop()
 
     # Step 4: Return authenticated Spotify client
