@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 
 # Debug: List available keys in st.secrets
 st.write("Available secret keys:", st.secrets.keys())
+# Print all secrets and their values (only for debugging, remove in production)
+st.write("All secrets:")
+st.write(st.secrets)
 # --------------------------- Configuration --------------------------- #
 
 SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app'  # Or your deployed app URL
