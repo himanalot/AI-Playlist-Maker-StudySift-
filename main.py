@@ -74,21 +74,25 @@ def authenticate_spotify():
         auth_code = st.query_params.get('code')
 
         if auth_code:
-            # Since `st.query_params.get('code')` returns the last value as a string,
-            # we can directly use it without checking for list
-            code = auth_code
-            token_info = sp_oauth.get_access_token(code)
+            # Explicitly set as_dict=True to handle the response as a dictionary
+            token_info = sp_oauth.get_access_token(auth_code, as_dict=True)
 
             if token_info:
                 st.session_state[token_info_key] = token_info
+
+                # Remove the 'code' parameter from the URL to prevent reuse
+                # Create a new dictionary excluding 'code'
+                new_query_params = st.query_params.to_dict()
+                new_query_params.pop('code', None)
+                st.query_params.from_dict(new_query_params)
+
                 st.experimental_rerun()  # Trigger a rerun to use the new token_info
             else:
                 st.error("Failed to obtain access token. Please try authorizing again.")
                 st.stop()
 
-    # Refresh token if it's expired
+    # Step 3: Refresh token if it's expired
     token_info = st.session_state.get(token_info_key)
-
     if token_info:
         expires_at = token_info.get('expires_at')
         refresh_token = token_info.get('refresh_token')
@@ -97,7 +101,7 @@ def authenticate_spotify():
             current_time = int(time.time())
             if expires_at - current_time < 60:
                 try:
-                    token_info = sp_oauth.refresh_access_token(refresh_token)
+                    token_info = sp_oauth.refresh_access_token(refresh_token, as_dict=True)
                     st.session_state[token_info_key] = token_info
                 except Exception as e:
                     st.error(f"Failed to refresh access token: {e}")
@@ -111,7 +115,7 @@ def authenticate_spotify():
         st.error("No token information found. Please authorize your Spotify account.")
         st.stop()
 
-    # Return authenticated Spotify client
+    # Step 4: Return authenticated Spotify client
     access_token = st.session_state[token_info_key].get('access_token') if st.session_state[token_info_key] else None
     if access_token:
         return spotipy.Spotify(auth=access_token)
