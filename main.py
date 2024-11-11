@@ -27,7 +27,6 @@ client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
 
 # Access variables from the 'openai' section
 api_key = st.secrets["openai"]["GPT4_MINI_API_KEY"]
-st.write(api_key)
 # Ensure the variables are loaded
 if not all([client_id, client_secret, api_key]):
     raise ValueError("Missing environment variables. Please set them in Render.")
