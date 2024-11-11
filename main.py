@@ -69,7 +69,7 @@ def authenticate_spotify():
         st.write(f'Please [authorize]({auth_url}) to access your Spotify account.')
 
         # Step 2: Retrieve the authorization code from query parameters
-        auth_code = st.experimental_get_query_params().get('code')
+        auth_code = st.query_params.get('code')
         if auth_code:
             code = auth_code[0] if isinstance(auth_code, list) else auth_code
             token_info = sp_oauth.get_access_token(code)
