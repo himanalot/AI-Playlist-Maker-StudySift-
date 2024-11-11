@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 st.write("Available secret keys:", st.secrets.keys())
 # --------------------------- Configuration --------------------------- #
 
-SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app/'  # Or your deployed app URL
+SPOTIPY_REDIRECT_URI = 'http://localhost:8502'  # Or your deployed app URL
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
