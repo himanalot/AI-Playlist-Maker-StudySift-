@@ -14,9 +14,7 @@ from dotenv import load_dotenv
 
 # Debug: List available keys in st.secrets
 st.write("Available secret keys:", st.secrets.keys())
-# Print all secrets and their values (only for debugging, remove in production)
-st.write("All secrets:")
-st.write(st.secrets)
+
 # --------------------------- Configuration --------------------------- #
 
 SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app'  # Or your deployed app URL
@@ -25,7 +23,6 @@ GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
 # Access variables from the 'spotify' section
 client_id = st.secrets["spotify"]["SPOTIPY_CLIENT_ID"]
-st.write(client_id)
 client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
 
 # Access variables from the 'openai' section
