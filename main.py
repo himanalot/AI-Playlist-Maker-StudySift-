@@ -22,6 +22,9 @@ GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 client_id = os.getenv('SPOTIPY_CLIENT_ID')
 client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
 api_key = os.getenv('GPT4_MINI_API_KEY')
+# Ensure the variables are loaded
+if not all([client_id, client_secret, api_key]):
+    raise ValueError("Missing environment variables. Please set them in Render.")
 
 # --------------------------- Custom Cache Handler --------------------------- #
 
