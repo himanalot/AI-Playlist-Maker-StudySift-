@@ -20,12 +20,9 @@ SPOTIPY_REDIRECT_URI = 'https://studysift-jbyhh4glfowhcs8xszu9xr.streamlit.app/'
 
 GPT4_MINI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 # Now you can access your variables
-# Access variables from the 'spotify' section
-client_id = st.secrets["spotify"]["SPOTIPY_CLIENT_ID"]
-client_secret = st.secrets["spotify"]["SPOTIPY_CLIENT_SECRET"]
-
-# Access variables from the 'openai' section
-api_key = st.secrets["openai"]["GPT4_MINI_API_KEY"]
+client_id = st.secrets["SPOTIPY_CLIENT_ID"]
+client_secret = st.secrets["SPOTIPY_CLIENT_SECRET"]
+api_key = st.secrets["GPT4_MINI_API_KEY"]
 # Ensure the variables are loaded
 if not all([client_id, client_secret, api_key]):
     raise ValueError("Missing environment variables. Please set them in Render.")
@@ -53,8 +50,8 @@ def authenticate_spotify():
 
     # Create SpotifyOAuth object
     sp_oauth = SpotifyOAuth(
-        client_id=os.getenv('SPOTIPY_CLIENT_ID'),
-        client_secret=os.getenv('SPOTIPY_CLIENT_SECRET'),
+        client_id=st.secrets['SPOTIPY_CLIENT_ID'],
+        client_secret=st.secrets['SPOTIPY_CLIENT_SECRET'],
         redirect_uri=SPOTIPY_REDIRECT_URI,
         scope='playlist-modify-public playlist-modify-private',
         cache_handler=StreamlitSessionCacheHandler(token_info_key),
